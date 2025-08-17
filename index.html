@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>U-Flix</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles for a premium look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0a; /* A deeper black */
+        }
+        
+        .main-container {
+             background-image: radial-gradient(circle at 10% 10%, rgba(12, 22, 69, 0.3) 0%, rgba(12, 22, 69, 0) 25%),
+                              radial-gradient(circle at 90% 80%, rgba(59, 17, 71, 0.3) 0%, rgba(59, 17, 71, 0) 25%);
+        }
+
+        /* Custom aspect ratio for video player */
+        .aspect-w-16 { position: relative; padding-bottom: 56.25%; }
+        .aspect-h-9 { height: 0; }
+        .aspect-w-16 > * { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        
+        /* Custom glow effect for movie cards */
+        .movie-card:hover .glow-effect {
+            opacity: 1;
+        }
+        .glow-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 0.5rem; /* same as rounded-lg */
+            background: radial-gradient(circle at center, rgba(79, 70, 229, 0.4) 0%, rgba(79, 70, 229, 0) 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 0;
+        }
+        .modal-backdrop {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-content {
+            transition: transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-black text-gray-200">
+
+    <div class="main-container min-h-screen">
+        <!-- Header -->
+        <header class="bg-black/30 backdrop-blur-lg sticky top-0 z-20 border-b border-gray-800/50">
+            <nav class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <button id="nav-title" class="text-2xl font-bold text-white hover:text-indigo-400 transition-colors duration-300">U-Flix</button>
+                <div>
+                    <button id="nav-admin-button" class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-500 transition-all duration-300 shadow-lg shadow-indigo-500/20 hidden font-semibold">Admin Panel</button>
+                    <button id="nav-login-button" class="text-gray-300 hover:text-white transition-colors duration-300 font-semibold">Admin Login</button>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="app-container" class="container mx-auto px-4 py-8 md:py-12">
+
+            <!-- Initial Loader -->
+            <div id="initial-loader" class="text-center text-gray-400 text-2xl mt-20">Authenticating...</div>
+
+            <!-- Home Page View -->
+            <div id="home-page" class="hidden">
+                <div class="text-center mb-12">
+                    <h1 class="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 mb-4">U-Flix</h1>
+                    <p class="text-gray-400 text-lg">Your personal movie collection, powered by Google Drive.</p>
+                </div>
+                <div class="w-full max-w-2xl mx-auto mb-12">
+                    <input id="search-bar" type="text" placeholder="Search for any movie..." class="w-full px-5 py-4 bg-gray-900/50 text-white border-2 border-gray-700 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 transition-all duration-300">
+                </div>
+                <div id="movies-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    <!-- Movie cards will be injected here by JavaScript -->
+                </div>
+                <div id="home-page-message" class="text-center text-gray-500 text-xl mt-20 hidden"></div>
+            </div>
+
+            <!-- Movie Player View -->
+            <div id="movie-player-page" class="hidden">
+                <button id="back-to-home-button" class="mb-8 bg-gray-800 text-white px-5 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-300 flex items-center font-semibold">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Back to Movies
+                </button>
+                <div id="player-content">
+                    <!-- Player will be injected here -->
+                </div>
+            </div>
+
+            <!-- Login & Admin Pages Wrapper -->
+            <div id="auth-pages-wrapper" class="hidden min-h-[80vh] flex flex-col items-center justify-center p-4">
+                <!-- Login Page View -->
+                <div id="login-page">
+                    <div class="w-full max-w-sm">
+                        <h1 id="login-title" class="text-3xl font-bold text-white text-center mb-6">Admin Login</h1>
+                        <form id="login-form" class="bg-gray-900/50 border border-gray-800 p-8 rounded-xl shadow-2xl space-y-6 backdrop-blur-sm">
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-gray-400 mb-2">Email</label>
+                                <input type="email" id="email" name="email" class="w-full px-4 py-3 bg-gray-800 text-white border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            </div>
+                            <div>
+                                <label for="password" class="block text-sm font-medium text-gray-400 mb-2">Password</label>
+                                <input type="password" id="password" name="password" class="w-full px-4 py-3 bg-gray-800 text-white border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            </div>
+                            <p id="auth-error" class="text-red-400 text-sm text-center hidden"></p>
+                            <button id="auth-submit-button" type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-md hover:bg-indigo-500 transition-colors duration-300 shadow-lg shadow-indigo-500/30">Login</button>
+                            <div class="relative">
+                                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-700"></div></div>
+                                <div class="relative flex justify-center text-sm"><span class="px-2 bg-gray-900/50 text-gray-500">Or</span></div>
+                            </div>
+                            <button type="button" id="public-admin-login-button" class="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-md hover:bg-gray-600 transition-colors duration-300">Login as Public Admin</button>
+                            <p class="text-center text-sm text-gray-500 pt-2">
+                                <span id="auth-toggle-text">Don't have an account?</span>
+                                <button type="button" id="auth-toggle-button" class="font-medium text-indigo-400 hover:text-indigo-300 ml-1 focus:outline-none">Register</button>
+                            </p>
+                            <button type="button" id="login-back-button" class="w-full mt-4 text-center text-indigo-400 hover:text-indigo-300 text-sm">← Back to site</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Admin Panel View -->
+                <div id="admin-page" class="hidden w-full max-w-4xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-3xl font-bold text-white">Admin Panel</h1>
+                        <button id="sign-out-button" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-500 transition-colors duration-300 font-semibold">Sign Out</button>
+                    </div>
+                    <!-- Add Movie Form -->
+                    <form id="add-movie-form" class="bg-gray-900/50 border border-gray-800 p-8 rounded-xl shadow-2xl space-y-6 backdrop-blur-sm mb-12">
+                        <h2 class="text-2xl font-bold text-white">Add New Movie</h2>
+                        <div>
+                            <label for="title" class="block text-sm font-medium text-gray-400 mb-2">Movie Title</label>
+                            <input type="text" id="title" name="title" class="w-full px-4 py-3 bg-gray-800 text-white border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" required>
+                        </div>
+                        <div>
+                            <label for="driveLink" class="block text-sm font-medium text-gray-400 mb-2">Google Drive Link</label>
+                            <input type="url" id="driveLink" name="driveLink" placeholder="https://drive.google.com/file/d/..." class="w-full px-4 py-3 bg-gray-800 text-white border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" required>
+                            <p class="text-xs text-gray-500 mt-2">Make sure the link sharing is set to "Anyone with the link".</p>
+                        </div>
+                        <div>
+                            <label for="thumbnail" class="block text-sm font-medium text-gray-400 mb-2">Thumbnail Image (Optional)</label>
+                            <input type="file" id="thumbnail" name="thumbnail" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 transition-colors duration-300">
+                        </div>
+                        <button type="submit" id="add-movie-button" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-md hover:bg-indigo-500 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors duration-300 shadow-lg shadow-indigo-500/30">Add Movie</button>
+                        <p id="upload-message" class="text-center text-sm text-green-400 hidden"></p>
+                    </form>
+                    <!-- Manage Movies List -->
+                    <div class="bg-gray-900/50 border border-gray-800 p-8 rounded-xl shadow-2xl backdrop-blur-sm">
+                        <h2 class="text-2xl font-bold text-white mb-6">Manage Movies</h2>
+                        <div id="admin-movie-list" class="space-y-4">
+                            <!-- Movie list items will be injected here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="bg-black border-t border-gray-800/50">
+        <div class="container mx-auto px-4 py-6 text-center text-gray-500 text-sm">
+            <p>Developed by Sheikh Istemam Ahmed Utsho, Email- istemamahmed@outlook.com</p>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <div id="edit-movie-modal" class="fixed inset-0 z-30 flex items-center justify-center p-4 hidden">
+        <div class="modal-backdrop absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="modal-content bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-md p-8 z-10 scale-95">
+            <h2 class="text-2xl font-bold text-white mb-6">Edit Movie</h2>
+            <form id="edit-movie-form" class="space-y-6">
+                <input type="hidden" id="edit-movie-id">
+                <div>
+                    <label for="edit-title" class="block text-sm font-medium text-gray-400 mb-2">Movie Title</label>
+                    <input type="text" id="edit-title" class="w-full px-4 py-3 bg-gray-800 text-white border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label for="edit-driveLink" class="block text-sm font-medium text-gray-400 mb-2">Google Drive Link</label>
+                    <input type="url" id="edit-driveLink" class="w-full px-4 py-3 bg-gray-800 text-white border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label for="edit-thumbnail" class="block text-sm font-medium text-gray-400 mb-2">New Thumbnail (Optional)</label>
+                    <input type="file" id="edit-thumbnail" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500">
+                </div>
+                <div class="flex gap-4 pt-4">
+                    <button type="button" id="cancel-edit-button" class="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-md hover:bg-gray-600 transition-colors">Cancel</button>
+                    <button type="submit" id="save-edit-button" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-md hover:bg-indigo-500 transition-colors">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="delete-confirm-modal" class="fixed inset-0 z-30 flex items-center justify-center p-4 hidden">
+        <div class="modal-backdrop absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="modal-content bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-8 z-10 scale-95">
+            <h2 class="text-2xl font-bold text-white mb-4">Are you sure?</h2>
+            <p class="text-gray-400 mb-6">This will permanently delete the movie. This action cannot be undone.</p>
+            <div class="flex gap-4">
+                <button type="button" id="cancel-delete-button" class="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-md hover:bg-gray-600 transition-colors">Cancel</button>
+                <button type="button" id="confirm-delete-button" class="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-md hover:bg-red-500 transition-colors">Delete</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Import functions from the Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+        // --- IMPORTANT: Firebase Configuration ---
+        // Replace with your own Firebase project's configuration.
+     const firebaseConfig = {
+  apiKey: "AIzaSyDD1gMMoeDVHHXnbgKg22WxT2u_LVHwZhs",
+  authDomain: "my-movie-site-fdb69.firebaseapp.com",
+  projectId: "my-movie-site-fdb69",
+  storageBucket: "my-movie-site-fdb69.firebasestorage.app",
+  messagingSenderId: "236972245474",
+  appId: "1:236972245474:web:bf45fd95927c053e8a79bb"
+};
+
+        // --- Initialize Firebase ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // --- Global State & Variables ---
+        let allMovies = [];
+        let currentUser = null;
+        let isRegistering = false;
+        let movieToDeleteId = null;
+
+        // --- DOM Element References ---
+        const pages = {
+            loader: document.getElementById('initial-loader'),
+            home: document.getElementById('home-page'),
+            player: document.getElementById('movie-player-page'),
+            authWrapper: document.getElementById('auth-pages-wrapper'),
+            login: document.getElementById('login-page'),
+            admin: document.getElementById('admin-page'),
+        };
+        const modals = {
+            edit: document.getElementById('edit-movie-modal'),
+            delete: document.getElementById('delete-confirm-modal'),
+        };
+        const navAdminButton = document.getElementById('nav-admin-button');
+        const navLoginButton = document.getElementById('nav-login-button');
+        const moviesGrid = document.getElementById('movies-grid');
+        const searchBar = document.getElementById('search-bar');
+        const homePageMessage = document.getElementById('home-page-message');
+        const adminMovieList = document.getElementById('admin-movie-list');
+
+        // --- View & Modal Management ---
+        function showView(viewName) {
+            Object.values(pages).forEach(page => page.classList.add('hidden'));
+            if (viewName === 'login' || viewName === 'admin') {
+                pages.authWrapper.classList.remove('hidden');
+                if(pages[viewName]) pages[viewName].classList.remove('hidden');
+            } else {
+                if(pages[viewName]) pages[viewName].classList.remove('hidden');
+            }
+        }
+        
+        function showModal(modalName) {
+            if (modals[modalName]) {
+                modals[modalName].classList.remove('hidden');
+                setTimeout(() => {
+                    modals[modalName].querySelector('.modal-backdrop').style.opacity = 1;
+                    modals[modalName].querySelector('.modal-content').style.transform = 'scale(1)';
+                }, 10);
+            }
+        }
+        
+        function hideModal(modalName) {
+             if (modals[modalName]) {
+                modals[modalName].querySelector('.modal-backdrop').style.opacity = 0;
+                modals[modalName].querySelector('.modal-content').style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    modals[modalName].classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        // --- Navigation Logic ---
+        document.getElementById('nav-title').addEventListener('click', () => showView('home'));
+        navLoginButton.addEventListener('click', () => showView('login'));
+        navAdminButton.addEventListener('click', () => showView('admin'));
+        document.getElementById('back-to-home-button').addEventListener('click', () => showView('home'));
+        document.getElementById('login-back-button').addEventListener('click', () => showView('home'));
+        document.getElementById('sign-out-button').addEventListener('click', () => signOut(auth));
+
+        // --- Authentication ---
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                navAdminButton.classList.remove('hidden');
+                navLoginButton.classList.add('hidden');
+            } else {
+                navAdminButton.classList.add('hidden');
+                navLoginButton.classList.remove('hidden');
+                if (!pages.admin.classList.contains('hidden')) showView('home');
+            }
+            if (!pages.loader.classList.contains('hidden')) showView('home');
+        });
+        
+        // --- Login Form Logic ---
+        const loginForm = document.getElementById('login-form');
+        const authError = document.getElementById('auth-error');
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginForm.email.value;
+            const password = loginForm.password.value;
+            authError.classList.add('hidden');
+            try {
+                if (isRegistering) await createUserWithEmailAndPassword(auth, email, password);
+                await signInWithEmailAndPassword(auth, email, password);
+                showView('admin');
+            } catch (error) {
+                authError.textContent = getAuthErrorMessage(error.code);
+                authError.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('public-admin-login-button').addEventListener('click', async () => {
+            const publicAdminEmail = "admin@movieflix.com";
+            const publicAdminPassword = "password123";
+            authError.classList.add('hidden');
+            try {
+                await signInWithEmailAndPassword(auth, publicAdminEmail, publicAdminPassword);
+                showView('admin');
+            } catch (error) {
+                 authError.textContent = 'Public admin user not found. Please register it first.';
+                 authError.classList.remove('hidden');
+            }
+        });
+
+        const authToggleButton = document.getElementById('auth-toggle-button');
+        authToggleButton.addEventListener('click', () => {
+            isRegistering = !isRegistering;
+            document.getElementById('login-title').textContent = isRegistering ? 'Admin Registration' : 'Admin Login';
+            document.getElementById('auth-submit-button').textContent = isRegistering ? 'Register' : 'Login';
+            document.getElementById('auth-toggle-text').textContent = isRegistering ? 'Already have an account?' : "Don't have an account?";
+            authToggleButton.textContent = isRegistering ? 'Login' : 'Register';
+            authError.classList.add('hidden');
+        });
+
+        function getAuthErrorMessage(code) {
+            switch (code) {
+                case 'auth/email-already-in-use': return 'This email is already registered.';
+                case 'auth/weak-password': return 'Password should be at least 6 characters.';
+                case 'auth/invalid-credential':
+                case 'auth/user-not-found':
+                case 'auth/wrong-password': return 'Invalid email or password.';
+                default: return 'An error occurred. Please try again.';
+            }
+        }
+
+        // --- Home Page & Admin List: Movie Loading and Rendering ---
+        onSnapshot(collection(db, "movies"), (snapshot) => {
+            allMovies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderMovies(allMovies);
+            renderAdminMovieList(allMovies);
+        }, (error) => {
+            console.error("Error fetching movies:", error);
+            homePageMessage.textContent = "Failed to load movies.";
+            homePageMessage.classList.remove('hidden');
+        });
+
+        function renderMovies(movies) {
+            moviesGrid.innerHTML = '';
+            if (movies.length === 0) {
+                homePageMessage.innerHTML = `<p>No movies found.</p><p>Add movies in the admin panel.</p>`;
+                homePageMessage.classList.remove('hidden');
+                return;
+            }
+            homePageMessage.classList.add('hidden');
+
+            movies.forEach(movie => {
+                const movieCard = document.createElement('div');
+                movieCard.className = 'movie-card relative bg-gray-900 rounded-lg overflow-hidden transform hover:-translate-y-2 transition-all duration-300 cursor-pointer group shadow-lg';
+                movieCard.innerHTML = `
+                    <div class="glow-effect"></div>
+                    <img src="${movie.thumbnailUrl}" alt="${movie.title}" class="w-full h-full object-cover z-10" onerror="this.onerror=null;this.src='https://placehold.co/400x600/1f2937/ffffff?text=Image+Error';">
+                    <div class="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black via-black/70 to-transparent z-10"></div>
+                    <div class="absolute bottom-0 left-0 right-0 p-4 z-10">
+                        <h3 class="text-lg font-bold text-white truncate group-hover:text-indigo-300 transition-colors duration-300">${movie.title}</h3>
+                    </div>
+                `;
+                movieCard.addEventListener('click', () => loadMoviePlayer(movie.id));
+                moviesGrid.appendChild(movieCard);
+            });
+        }
+        
+        searchBar.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredMovies = allMovies.filter(movie => movie.title.toLowerCase().includes(searchTerm));
+            renderMovies(filteredMovies);
+        });
+
+        // --- Movie Player Page ---
+        async function loadMoviePlayer(movieId) {
+            showView('player');
+            const playerContent = document.getElementById('player-content');
+            playerContent.innerHTML = `<div class="text-center text-gray-400 text-2xl mt-20">Loading Player...</div>`;
+            try {
+                const movieDoc = await getDoc(doc(db, "movies", movieId));
+                if (movieDoc.exists()) {
+                    const movie = movieDoc.data();
+                    const embedUrl = getEmbedUrl(movie.googleDriveUrl);
+                    playerContent.innerHTML = embedUrl ? `
+                        <h1 class="text-4xl font-bold text-white mb-6">${movie.title}</h1>
+                        <div class="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden shadow-2xl shadow-indigo-500/20">
+                            <iframe src="${embedUrl}" allowfullscreen class="w-full h-full" title="Movie player for ${movie.title}"></iframe>
+                        </div>` : 
+                        `<div class="text-center bg-gray-900 border border-gray-800 p-8 rounded-lg"><h2 class="text-2xl text-red-400">Invalid Google Drive Link</h2></div>`;
+                } else {
+                    playerContent.innerHTML = `<div class="text-center text-red-400 text-lg mt-20">Movie not found.</div>`;
+                }
+            } catch (error) {
+                playerContent.innerHTML = `<div class="text-center text-red-400 text-lg mt-20">Could not load movie details.</div>`;
+            }
+        }
+
+        function getEmbedUrl(url) {
+            if (!url) return null;
+            const regExp = /^https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+            const match = url.match(regExp);
+            return (match && match[1]) ? `https://drive.google.com/file/d/${match[1]}/preview` : null;
+        }
+
+        // --- Admin Panel: Add, Edit, Delete ---
+        const addMovieForm = document.getElementById('add-movie-form');
+        const addMovieButton = document.getElementById('add-movie-button');
+        const uploadMessage = document.getElementById('upload-message');
+
+        addMovieForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) return showMessage('error', 'You must be logged in.');
+            const title = addMovieForm.title.value;
+            const driveLink = addMovieForm.driveLink.value;
+            const thumbnailFile = addMovieForm.thumbnail.files[0];
+            if (!title || !driveLink) return showMessage('error', 'Title and Drive Link are required.');
+
+            addMovieButton.disabled = true;
+            addMovieButton.textContent = 'Processing...';
+            showMessage('info', 'Processing, please wait...');
+            
+            try {
+                let thumbnailUrl = '';
+                if (thumbnailFile) {
+                    showMessage('info', 'Uploading thumbnail...');
+                    const storageRef = ref(storage, `thumbnails/${Date.now()}_${thumbnailFile.name}`);
+                    const snapshot = await uploadBytes(storageRef, thumbnailFile);
+                    thumbnailUrl = await getDownloadURL(snapshot.ref);
+                } else {
+                    thumbnailUrl = `https://placehold.co/400x600/1f2937/ffffff?text=${encodeURIComponent(title)}`;
+                }
+
+                showMessage('info', 'Saving movie data...');
+                await addDoc(collection(db, 'movies'), { title, googleDriveUrl: driveLink, thumbnailUrl, createdAt: new Date() });
+                showMessage('success', 'Movie added successfully!');
+                addMovieForm.reset();
+            } catch (error) {
+                showMessage('error', 'Failed to add movie. Check console.');
+            } finally {
+                addMovieButton.disabled = false;
+                addMovieButton.textContent = 'Add Movie';
+            }
+        });
+
+        function showMessage(type, text) {
+            uploadMessage.textContent = text;
+            uploadMessage.className = 'text-center text-sm'; // Reset classes
+            if (type === 'success') uploadMessage.classList.add('text-green-400');
+            else if (type === 'error') uploadMessage.classList.add('text-red-400');
+            else uploadMessage.classList.add('text-blue-400');
+            uploadMessage.classList.remove('hidden');
+        }
+        
+        // Admin movie list rendering
+        function renderAdminMovieList(movies) {
+            adminMovieList.innerHTML = '';
+            if (movies.length === 0) {
+                adminMovieList.innerHTML = `<p class="text-gray-500">No movies added yet.</p>`;
+                return;
+            }
+            movies.forEach(movie => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between bg-gray-800 p-4 rounded-lg';
+                item.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <img src="${movie.thumbnailUrl}" class="w-12 h-16 object-cover rounded-md" />
+                        <p class="font-semibold">${movie.title}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button data-id="${movie.id}" class="edit-btn bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-500 text-sm">Edit</button>
+                        <button data-id="${movie.id}" class="delete-btn bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-500 text-sm">Delete</button>
+                    </div>
+                `;
+                adminMovieList.appendChild(item);
+            });
+        }
+        
+        // Event delegation for edit/delete buttons
+        adminMovieList.addEventListener('click', e => {
+            const id = e.target.dataset.id;
+            if (!id) return;
+            if (e.target.classList.contains('edit-btn')) {
+                const movie = allMovies.find(m => m.id === id);
+                if (movie) {
+                    document.getElementById('edit-movie-id').value = id;
+                    document.getElementById('edit-title').value = movie.title;
+                    document.getElementById('edit-driveLink').value = movie.googleDriveUrl;
+                    showModal('edit');
+                }
+            }
+            if (e.target.classList.contains('delete-btn')) {
+                movieToDeleteId = id;
+                showModal('delete');
+            }
+        });
+        
+        // Edit Modal Logic
+        document.getElementById('cancel-edit-button').addEventListener('click', () => hideModal('edit'));
+        document.getElementById('edit-movie-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-movie-id').value;
+            const title = document.getElementById('edit-title').value;
+            const driveLink = document.getElementById('edit-driveLink').value;
+            const thumbnailFile = document.getElementById('edit-thumbnail').files[0];
+            const movieRef = doc(db, 'movies', id);
+
+            try {
+                let thumbnailUrl;
+                if (thumbnailFile) {
+                    const storageRef = ref(storage, `thumbnails/${Date.now()}_${thumbnailFile.name}`);
+                    const snapshot = await uploadBytes(storageRef, thumbnailFile);
+                    thumbnailUrl = await getDownloadURL(snapshot.ref);
+                }
+                
+                const updateData = { title, googleDriveUrl: driveLink };
+                if (thumbnailUrl) updateData.thumbnailUrl = thumbnailUrl;
+
+                await updateDoc(movieRef, updateData);
+                hideModal('edit');
+            } catch (error) {
+                console.error("Error updating movie:", error);
+                alert("Failed to update movie.");
+            }
+        });
+
+        // Delete Modal Logic
+        document.getElementById('cancel-delete-button').addEventListener('click', () => hideModal('delete'));
+        document.getElementById('confirm-delete-button').addEventListener('click', async () => {
+            if (!movieToDeleteId) return;
+            const movieToDelete = allMovies.find(m => m.id === movieToDeleteId);
+            try {
+                await deleteDoc(doc(db, "movies", movieToDeleteId));
+                // Delete thumbnail from storage if it's not a placeholder
+                if (movieToDelete && movieToDelete.thumbnailUrl && !movieToDelete.thumbnailUrl.includes('placehold.co')) {
+                    const thumbnailRef = ref(storage, movieToDelete.thumbnailUrl);
+                    await deleteObject(thumbnailRef);
+                }
+                movieToDeleteId = null;
+                hideModal('delete');
+            } catch (error) {
+                console.error("Error deleting movie:", error);
+                alert("Failed to delete movie.");
+            }
+        });
+        
+        // Close modals with backdrop click
+        modals.edit.querySelector('.modal-backdrop').addEventListener('click', () => hideModal('edit'));
+        modals.delete.querySelector('.modal-backdrop').addEventListener('click', () => hideModal('delete'));
+
+    </script>
+</body>
+</html>
