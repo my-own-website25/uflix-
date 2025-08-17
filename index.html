@@ -104,7 +104,7 @@
                 <!-- Login Page View -->
                 <div id="login-page">
                     <div class="w-full max-w-sm">
-                        <h1 id="login-title" class="text-3xl font-bold text-white text-center mb-6">Admin Login</h1>
+                        <h1 class="text-3xl font-bold text-white text-center mb-6">Admin Login</h1>
                         <form id="login-form" class="bg-gray-900/50 border border-gray-800 p-8 rounded-xl shadow-2xl space-y-6 backdrop-blur-sm">
                             <div>
                                 <label for="email" class="block text-sm font-medium text-gray-400 mb-2">Email</label>
@@ -116,15 +116,6 @@
                             </div>
                             <p id="auth-error" class="text-red-400 text-sm text-center hidden"></p>
                             <button id="auth-submit-button" type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-md hover:bg-indigo-500 transition-colors duration-300 shadow-lg shadow-indigo-500/30">Login</button>
-                            <div class="relative">
-                                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-700"></div></div>
-                                <div class="relative flex justify-center text-sm"><span class="px-2 bg-gray-900/50 text-gray-500">Or</span></div>
-                            </div>
-                            <button type="button" id="public-admin-login-button" class="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-md hover:bg-gray-600 transition-colors duration-300">Login as Public Admin</button>
-                            <p class="text-center text-sm text-gray-500 pt-2">
-                                <span id="auth-toggle-text">Don't have an account?</span>
-                                <button type="button" id="auth-toggle-button" class="font-medium text-indigo-400 hover:text-indigo-300 ml-1 focus:outline-none">Register</button>
-                            </p>
                             <button type="button" id="login-back-button" class="w-full mt-4 text-center text-indigo-400 hover:text-indigo-300 text-sm">← Back to site</button>
                         </form>
                     </div>
@@ -242,7 +233,6 @@
         // --- Global State & Variables ---
         let allMovies = [];
         let currentUser = null;
-        let isRegistering = false;
         let movieToDeleteId = null;
 
         // --- DOM Element References ---
@@ -327,7 +317,6 @@
             const password = loginForm.password.value;
             authError.classList.add('hidden');
             try {
-                if (isRegistering) await createUserWithEmailAndPassword(auth, email, password);
                 await signInWithEmailAndPassword(auth, email, password);
                 showView('admin');
             } catch (error) {
@@ -336,33 +325,8 @@
             }
         });
 
-        document.getElementById('public-admin-login-button').addEventListener('click', async () => {
-            const publicAdminEmail = "admin@movieflix.com";
-            const publicAdminPassword = "password123";
-            authError.classList.add('hidden');
-            try {
-                await signInWithEmailAndPassword(auth, publicAdminEmail, publicAdminPassword);
-                showView('admin');
-            } catch (error) {
-                 authError.textContent = 'Public admin user not found. Please register it first.';
-                 authError.classList.remove('hidden');
-            }
-        });
-
-        const authToggleButton = document.getElementById('auth-toggle-button');
-        authToggleButton.addEventListener('click', () => {
-            isRegistering = !isRegistering;
-            document.getElementById('login-title').textContent = isRegistering ? 'Admin Registration' : 'Admin Login';
-            document.getElementById('auth-submit-button').textContent = isRegistering ? 'Register' : 'Login';
-            document.getElementById('auth-toggle-text').textContent = isRegistering ? 'Already have an account?' : "Don't have an account?";
-            authToggleButton.textContent = isRegistering ? 'Login' : 'Register';
-            authError.classList.add('hidden');
-        });
-
         function getAuthErrorMessage(code) {
             switch (code) {
-                case 'auth/email-already-in-use': return 'This email is already registered.';
-                case 'auth/weak-password': return 'Password should be at least 6 characters.';
                 case 'auth/invalid-credential':
                 case 'auth/user-not-found':
                 case 'auth/wrong-password': return 'Invalid email or password.';
@@ -373,6 +337,9 @@
         // --- Home Page & Admin List: Movie Loading and Rendering ---
         onSnapshot(collection(db, "movies"), (snapshot) => {
             allMovies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Sort movies alphabetically by title
+            allMovies.sort((a, b) => a.title.localeCompare(b.title));
+            
             renderMovies(allMovies);
             renderAdminMovieList(allMovies);
         }, (error) => {
@@ -425,7 +392,7 @@
                     playerContent.innerHTML = embedUrl ? `
                         <h1 class="text-4xl font-bold text-white mb-6">${movie.title}</h1>
                         <div class="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden shadow-2xl shadow-indigo-500/20">
-                            <iframe src="${embedUrl}" allowfullscreen class="w-full h-full" title="Movie player for ${movie.title}"></iframe>
+                            <iframe src="${embedUrl}" allow="fullscreen" allowfullscreen class="w-full h-full" title="Movie player for ${movie.title}"></iframe>
                         </div>` : 
                         `<div class="text-center bg-gray-900 border border-gray-800 p-8 rounded-lg"><h2 class="text-2xl text-red-400">Invalid Google Drive Link</h2></div>`;
                 } else {
@@ -503,11 +470,11 @@
                 const item = document.createElement('div');
                 item.className = 'flex items-center justify-between bg-gray-800 p-4 rounded-lg';
                 item.innerHTML = `
-                    <div class="flex items-center gap-4">
-                        <img src="${movie.thumbnailUrl}" class="w-12 h-16 object-cover rounded-md" />
-                        <p class="font-semibold">${movie.title}</p>
+                    <div class="flex items-center gap-4 overflow-hidden">
+                        <img src="${movie.thumbnailUrl}" class="w-12 h-16 object-cover rounded-md flex-shrink-0" />
+                        <p class="font-semibold truncate">${movie.title}</p>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 flex-shrink-0">
                         <button data-id="${movie.id}" class="edit-btn bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-500 text-sm">Edit</button>
                         <button data-id="${movie.id}" class="delete-btn bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-500 text-sm">Delete</button>
                     </div>
