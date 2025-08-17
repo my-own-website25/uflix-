@@ -209,13 +209,13 @@
     <script type="module">
         // Import functions from the Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
         // --- IMPORTANT: Firebase Configuration ---
         // Replace with your own Firebase project's configuration.
-     const firebaseConfig = {
+      const firebaseConfig = {
   apiKey: "AIzaSyDD1gMMoeDVHHXnbgKg22WxT2u_LVHwZhs",
   authDomain: "my-movie-site-fdb69.firebaseapp.com",
   projectId: "my-movie-site-fdb69",
@@ -392,7 +392,7 @@
                     playerContent.innerHTML = embedUrl ? `
                         <h1 class="text-4xl font-bold text-white mb-6">${movie.title}</h1>
                         <div class="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden shadow-2xl shadow-indigo-500/20">
-                            <iframe src="${embedUrl}" allow="fullscreen" allowfullscreen class="w-full h-full" title="Movie player for ${movie.title}"></iframe>
+                            <iframe src="${embedUrl}" allow="fullscreen" allowfullscreen webkitallowfullscreen mozallowfullscreen class="w-full h-full" title="Movie player for ${movie.title}"></iframe>
                         </div>` : 
                         `<div class="text-center bg-gray-900 border border-gray-800 p-8 rounded-lg"><h2 class="text-2xl text-red-400">Invalid Google Drive Link</h2></div>`;
                 } else {
